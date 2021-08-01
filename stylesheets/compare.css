@@ -42,6 +42,7 @@
 }
 
 #tibetan, #converted {
+  font-family: TibetanChogyalUnicode-170221, TibetanChogyalUnicode-ID, TibetanChogyalUnicode, TibetanMachineUnicode !important;
   font-size: 36px;
   line-height: 1em;
 }
