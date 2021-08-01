@@ -35,26 +35,43 @@ $(function() {
       }
     },
     template: `
-      <div class="ui container compare">
-        <div id="scrollable-area-container">
-          <div id="scrollable-area">
-            <div class="form">
-              <textarea
-                id="encoded"
-                v-model="encoded"
-                v-on:paste="encoded = $event"
-              ></textarea>
+      <div class="ui container">
+        <div class="ui grid">
+          <div class="eight wide column">
+            <div class="ui inverted disabled segment">
+              The gray line is rendered using the TibetanClassic if installed on your system.
+              Otherwise it will fallback on the TibetanMachine font.
             </div>
-            <div id="tibetan" style="position: absolute; left: -9999999;"></div>
-            <div class="form">
-              <div id="converted">
-                <div
-                  v-for="(line, index) in lines"
-                  :class="{
-                    encoded: index % 2 == 0,
-                    tibetan: index % 2 == 1,
-                  }">
-                  {{line}}
+          </div>
+          <div class="eight wide column">
+            <div class="ui inverted disabled segment">
+              The gray line is rendered using the TibetanChogyalUnicode if present on your system.
+              Otherwise it will fallback on the TibetanMachineUnicode font.
+            </div>
+          </div>
+        </div>
+        <div class="ui hidden divider"></div>
+        <div class="compare">
+          <div id="scrollable-area-container">
+            <div id="scrollable-area">
+              <div class="form">
+                <textarea
+                  id="encoded"
+                  v-model="encoded"
+                  v-on:paste="encoded = $event"
+                ></textarea>
+              </div>
+              <div id="tibetan" style="position: absolute; left: -9999999;"></div>
+              <div class="form">
+                <div id="converted">
+                  <div
+                    v-for="(line, index) in lines"
+                    :class="{
+                      encoded: index % 2 == 0,
+                      tibetan: index % 2 == 1,
+                    }">
+                    {{line}}
+                  </div>
                 </div>
               </div>
             </div>

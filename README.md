@@ -40,6 +40,16 @@ Testing
 * To ease debugging, clicking a tibetan case on the right side will re-run the
   test for just that particular case.
 
+Credits
+-----------
+
+A zillion thanks to everybody involved in building an maintaining Vue.js,
+jQuery, SemanticUI, Sugar.js, Underscore.js, DevDocs, Zeal and Google Chrome
+for making web development so easy and enjoyable.
+
+Through the little virtue coming from this work, may all beings human and
+otherwise reach absolute freedom.
+
 License
 -----------
 

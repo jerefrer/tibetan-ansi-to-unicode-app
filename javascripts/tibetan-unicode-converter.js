@@ -8,6 +8,7 @@ var TibetanUnicodeConverter = function(conversion) {
         replaced = replaced.replace(new RegExp(word.encoded, 'g'), word.tibetan);
       })
       var chars = replaced.split('');
+      var char;
       while (char = chars.shift()) {
         this.line += this.convertChar(char)
       }
