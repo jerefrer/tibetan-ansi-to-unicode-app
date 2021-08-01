@@ -43,11 +43,13 @@ Testing
 Credits
 -----------
 
-A zillion thanks to everybody involved in building an maintaining Vue.js,
-jQuery, SemanticUI, Sugar.js, Underscore.js, DevDocs, Zeal and Google Chrome
-for making web development so easy and enjoyable.
+A zillion thanks to:
+* Tony Duff and friends for producing all these beautiful Tibetan fonts.
+* Everybody involved in building an maintaining Vue.js, jQuery, SemanticUI,
+  Sugar.js, Underscore.js, DevDocs, Zeal and Google Chrome for making web
+  development so easy and enjoyable.
 
-Through the little virtue coming from this work, may all beings human and
+Through the virtue coming from this work, may all beings human and
 otherwise reach absolute freedom.
 
 License
