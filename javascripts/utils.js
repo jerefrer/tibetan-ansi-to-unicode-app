@@ -1,17 +1,3 @@
-var updateHeight = function() {
-  var all = ['#tibetan', '#converted', '#encoded'];
-  $(all.join(',')).css('height', 'auto').autosize();
-  var highest = all.max(function(element) { return $(element).height() });
-  var others = all.exclude(highest);
-  $(highest).autosize();
-  setTimeout(function() {
-    var height = $(highest).css('height');
-    _(others).each(function(element) {
-      $(element).css('height', height)
-    })
-  }, 0)
-}
-
 var extractTransliteration = function(text) {
   var lines = text.split("\n");
   var transliterationLines = [];
