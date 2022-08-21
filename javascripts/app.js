@@ -29,7 +29,7 @@ $(function() {
   app = new Vue({
     el: '#main',
     data: {
-      text: `
+      text: Storage.get('gibberish') || `
         oe×ñÎ
         >ë-{,-8ß:-bÜ-¹¥/-e$-020<Î
         ýV-#è-<9-Zë$-ýë-:Î
@@ -40,6 +40,11 @@ $(function() {
         eÜ,-bÜ<-/x/-dÜ9-#;è#<-<ß-#<ë:Î
         μ¥-9ß-ýV-<ÜKÜ-oe×ñÎ
       `.replace(/ /g, '').trim()
+    },
+    watch: {
+      text (value) {
+        Storage.set('gibberish', value);
+      }
     },
     computed: {
       lines: function() {

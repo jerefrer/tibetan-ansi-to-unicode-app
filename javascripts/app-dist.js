@@ -22,7 +22,12 @@ $(function () {
   app = new Vue({
     el: '#main',
     data: {
-      text: "\n        oe\xD7\xF1\xCE\n        >\xEB-{,-8\xDF:-b\xDC-\xB9\xA5/-e$-020<\xCE\n        \xFDV-#\xE8-<9-Z\xEB$-\xFD\xEB-:\xCE\n        8-02,-0&\xEB#-#\xDC-+$\xEB<-i\xE1/-/C\xE8<\xCE\n        \xFDV-7e\xB3$-#,<-5\xE8<-<\xDF-i#<\xCE\n        7\"\xEB9-\xB8\xA5-0\"7-7i\xEB-0$-\xFD\xEB<-/U\xEB9\xCE\n        a\xE8+-`\xDC-B\xE8<-<\xDF-/+#-/\u2026\xE5/-`\xDC<\xCE\n        e\xDC,-b\xDC<-/x/-d\xDC9-#;\xE8#<-<\xDF-#<\xEB:\xCE\n        \u03BC\xA5-9\xDF-\xFDV-<\xDCK\xDC-oe\xD7\xF1\xCE\n      ".replace(/ /g, '').trim()
+      text: Storage.get('gibberish') || "\n        oe\xD7\xF1\xCE\n        >\xEB-{,-8\xDF:-b\xDC-\xB9\xA5/-e$-020<\xCE\n        \xFDV-#\xE8-<9-Z\xEB$-\xFD\xEB-:\xCE\n        8-02,-0&\xEB#-#\xDC-+$\xEB<-i\xE1/-/C\xE8<\xCE\n        \xFDV-7e\xB3$-#,<-5\xE8<-<\xDF-i#<\xCE\n        7\"\xEB9-\xB8\xA5-0\"7-7i\xEB-0$-\xFD\xEB<-/U\xEB9\xCE\n        a\xE8+-`\xDC-B\xE8<-<\xDF-/+#-/\u2026\xE5/-`\xDC<\xCE\n        e\xDC,-b\xDC<-/x/-d\xDC9-#;\xE8#<-<\xDF-#<\xEB:\xCE\n        \u03BC\xA5-9\xDF-\xFDV-<\xDCK\xDC-oe\xD7\xF1\xCE\n      ".replace(/ /g, '').trim()
+    },
+    watch: {
+      text: function text(value) {
+        Storage.set('gibberish', value);
+      }
     },
     computed: {
       lines: function lines() {
