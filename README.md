@@ -1,17 +1,15 @@
-# tibetan-unicode-converter
+# tibetan-ansi-to-unicode
 
-A naive attempt at processing gibberish into Unicode Tibetan.
+A naive attempt at converting ANSI Tibetan from TibetanChogyal to Unicode.
 
 Almost all Tibetan characters should be properly transcoded but only a few
 Sanskrit characters are currently handled.
 
-Getting started
------------
+## Getting started
 
 Just copy the repository locally.
 
-Usage
------------
+## Usage
 
 ### As a library
 
@@ -26,34 +24,32 @@ new TibetanUnicodeConverter('oe×ñÎ >ë-{,-8ß:-bÜ-¹¥/-e$-020<Î').convert(
 
 ![Demo](./docs/index-small.jpg)
 
-* Open `index.html`
-* Fill in the left box with your gibberish
-* Click the *Copy to clipboard* button to copy the converted Unicode Tibetan.
+- Open `index.html`
+- Fill in the left box with your gibberish
+- Click the _Copy to clipboard_ button to copy the converted Unicode Tibetan.
 
-Testing
------------
+## Testing
 
 ![Demo](./docs/tests-small.jpg)
 
-* Open `tests.html`
-* Categories can be clicked to reveal their test cases.
-* To ease debugging, clicking a tibetan case on the right side will re-run the
+- Open `tests.html`
+- Categories can be clicked to reveal their test cases.
+- To ease debugging, clicking a tibetan case on the right side will re-run the
   test for just that particular case.
 
-Credits
------------
+## Credits
 
 A zillion thanks to:
-* Tony Duff and friends for producing all these beautiful Tibetan fonts.
-* Everybody involved in building an maintaining Vue.js, jQuery, SemanticUI,
+
+- Tony Duff and friends for producing all these beautiful Tibetan fonts.
+- Everybody involved in building an maintaining Vue.js, jQuery, SemanticUI,
   Sugar.js, Underscore.js, DevDocs, Zeal and Google Chrome for making web
   development so easy and enjoyable.
 
 Through the virtue coming from this work, may all beings human and
 otherwise reach absolute freedom.
 
-License
------------
+## License
 
 This software is licensed under the MIT License.
 
