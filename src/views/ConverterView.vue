@@ -4,6 +4,8 @@ import { computed, onMounted, ref, watch } from "vue";
 
 const direction = ref(localStorage.getItem("direction") || "toUnicode");
 const isDarkMode = ref(localStorage.getItem("darkMode") !== "false");
+const ansiCopied = ref(false);
+const unicodeCopied = ref(false);
 const ansiText = ref(
   localStorage.getItem("ansiText") ||
     `oe×ñÎ
@@ -67,6 +69,10 @@ function toggleDirection() {
 async function copyAnsi() {
   try {
     await navigator.clipboard.writeText(ansiText.value);
+    ansiCopied.value = true;
+    setTimeout(() => {
+      ansiCopied.value = false;
+    }, 2000);
   } catch (err) {
     console.error("Failed to copy:", err);
   }
@@ -75,6 +81,10 @@ async function copyAnsi() {
 async function copyUnicode() {
   try {
     await navigator.clipboard.writeText(unicodeText.value);
+    unicodeCopied.value = true;
+    setTimeout(() => {
+      unicodeCopied.value = false;
+    }, 2000);
   } catch (err) {
     console.error("Failed to copy:", err);
   }
@@ -144,8 +154,14 @@ onMounted(() => {
         <div class="panel left-panel">
           <div class="panel-header">
             <span>ANSI</span>
-            <button class="copy-btn" @click="copyAnsi" title="Copy ANSI">
+            <button
+              class="copy-btn"
+              :class="{ copied: ansiCopied }"
+              @click="copyAnsi"
+              title="Copy ANSI"
+            >
               <svg
+                v-if="!ansiCopied"
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
                 height="14"
@@ -160,6 +176,20 @@ onMounted(() => {
                 <path
                   d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
                 />
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </button>
           </div>
@@ -195,8 +225,14 @@ onMounted(() => {
         <div class="panel right-panel">
           <div class="panel-header">
             <span>Unicode</span>
-            <button class="copy-btn" @click="copyUnicode" title="Copy Unicode">
+            <button
+              class="copy-btn"
+              :class="{ copied: unicodeCopied }"
+              @click="copyUnicode"
+              title="Copy Unicode"
+            >
               <svg
+                v-if="!unicodeCopied"
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
                 height="14"
@@ -211,6 +247,20 @@ onMounted(() => {
                 <path
                   d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
                 />
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </button>
           </div>
@@ -343,6 +393,26 @@ onMounted(() => {
   color: rgba(0, 0, 0, 0.7);
   background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.15);
+}
+
+.copy-btn.copied {
+  color: #21ba45;
+  border-color: #21ba45;
+}
+
+.copy-btn.copied:hover {
+  color: #21ba45;
+  border-color: #21ba45;
+}
+
+.light-mode .copy-btn.copied {
+  color: #21ba45;
+  border-color: #21ba45;
+}
+
+.light-mode .copy-btn.copied:hover {
+  color: #21ba45;
+  border-color: #21ba45;
 }
 
 .swap-button {
