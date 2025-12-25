@@ -5,35 +5,17 @@ A naive attempt at converting ANSI Tibetan from TibetanChogyal to Unicode.
 Almost all Tibetan characters should be properly transcoded but only a few
 Sanskrit characters are currently handled.
 
-## Getting started
+This repo is just the web app, the actual library is at https://github.com/jerefrer/tibetan-ansi-to-unicode
 
-Just copy the repository locally.
-
-## Usage
-
-### As a library
-
-```js
-new TibetanUnicodeConverter('oe×ñÎ >ë-{,-8ß:-bÜ-¹¥/-e$-020<Î').convert()
-=> 'ཧཱུྃ༔ ཨོ་རྒྱན་ཡུལ་གྱི་ནུབ་བྱང་མཚམས༔'
-```
-
-### As a tool
-
-#### `index.html`
-
-![Demo](./docs/index-small.jpg)
-
-- Open `index.html`
-- Fill in the left box with your gibberish
-- Click the _Copy to clipboard_ button to copy the converted Unicode Tibetan.
+![1766686768288](image/README/1766686712107.png)
 
 ## Testing
 
-![Demo](./docs/tests-small.jpg)
+![1766686768288](image/README/1766686768288.png)
 
 - Go to /`tests`
 - Categories can be clicked to reveal their test cases.
+- Tests are defined as regular JS tests [in the lib repo](https://github.com/jerefrer/tibetan-ansi-to-unicode), and just imported here to visualize them in a nicer interface.
 
 ## Credits
 
