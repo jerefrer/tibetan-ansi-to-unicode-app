@@ -1,5 +1,5 @@
 {
-  "name": "tibetan-unicode-converter-app",
+  "name": "tibetan-ansi-to-unicode-app",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "tibetan-unicode-converter": "^1.0.1",
+    "tibetan-ansi-to-unicode": "^1.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.6.3"
   },

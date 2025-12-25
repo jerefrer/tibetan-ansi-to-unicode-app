@@ -1,5 +1,5 @@
 <script setup>
-import TibetanUnicodeConverter from "tibetan-unicode-converter";
+import TibetanAnsiToUnicode from "tibetan-ansi-to-unicode";
 import { computed, onMounted, ref, watch } from "vue";
 
 const direction = ref(localStorage.getItem("direction") || "toUnicode");
@@ -30,7 +30,7 @@ const convertedOutput = computed(() => {
   return input
     .split("\n")
     .map((line) => {
-      const converter = new TibetanUnicodeConverter(line);
+      const converter = new TibetanAnsiToUnicode(line);
       return direction.value === "toAnsi"
         ? converter.convertToAnsi()
         : converter.convert();

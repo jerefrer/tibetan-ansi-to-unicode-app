@@ -1,10 +1,9 @@
 <script setup>
-import TibetanUnicodeConverter from "tibetan-unicode-converter";
+import TibetanAnsiToUnicode, { testGroups } from "tibetan-ansi-to-unicode";
 import { computed } from "vue";
-import { testGroups } from "../data/testGroups.js";
 
 function runTest(test) {
-  const converted = new TibetanUnicodeConverter(test.conversion).convert();
+  const converted = new TibetanAnsiToUnicode(test.conversion).convert();
   return {
     ...test,
     converted,
