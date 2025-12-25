@@ -1,4 +1,4 @@
-# tibetan-ansi-to-unicode
+# tibetan-ansi-to-unicode-app
 
 A naive attempt at converting ANSI Tibetan from TibetanChogyal to Unicode.
 
@@ -32,16 +32,13 @@ new TibetanUnicodeConverter('oe×ñÎ >ë-{,-8ß:-bÜ-¹¥/-e$-020<Î').convert(
 
 ![Demo](./docs/tests-small.jpg)
 
-- Open `tests.html`
+- Go to /`tests`
 - Categories can be clicked to reveal their test cases.
-- To ease debugging, clicking a tibetan case on the right side will re-run the
-  test for just that particular case.
 
 ## Credits
 
 A zillion thanks to:
 
-- Tony Duff and friends for producing all these beautiful Tibetan fonts.
 - Everybody involved in building an maintaining Vue.js, jQuery, SemanticUI,
   Sugar.js, Underscore.js, DevDocs, Zeal and Google Chrome for making web
   development so easy and enjoyable.
@@ -53,7 +50,7 @@ otherwise reach absolute freedom.
 
 This software is licensed under the MIT License.
 
-Copyright Padmakara, 2021.
+Copyright Padmakara, 2025.
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
