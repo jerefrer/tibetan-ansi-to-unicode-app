@@ -2,6 +2,21 @@
   font-family: "TibetanMachineUnicode";
   src: url("/fonts/TibetanMachineUnicode1.0_0.ttf") format("truetype");
 }
+@font-face {
+  font-family: "Jomolhari";
+  src: url("/fonts/Jomolhari-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tibetan Machine Uni";
+  src: url("/fonts/TibetanMachineUnicode1.0_0.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "DDC Uchen";
+  src: url("/fonts/DDCUchenRegular.ttf") format("truetype");
+  font-display: swap;
+}
 
 * {
   margin: 0;
