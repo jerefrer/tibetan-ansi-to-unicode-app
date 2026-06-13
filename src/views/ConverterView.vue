@@ -208,10 +208,11 @@ function toggleTheme() {
   localStorage.setItem("darkMode", isDark.value);
 }
 
+const PREVIEW_ZOOM = 1.2; // on-screen readability; does not affect the exported file
 function runStyle(run) {
   const s = {};
   const scale = effScale();
-  if (run.size) s.fontSize = Math.round(run.size * scale) + "px";
+  if (run.size) s.fontSize = Math.round(run.size * scale * PREVIEW_ZOOM) + "px";
   if (run.bold) s.fontWeight = "700";
   if (run.italic) s.fontStyle = "italic";
   return s;
@@ -384,8 +385,8 @@ textarea:focus { border-color: var(--accent); }
   padding: 56px 60px; margin-top: 18px; min-height: 400px;
   line-height: 1;
 }
-.pg-p { margin: 0 0 0.7em; font-size: 20px; overflow-wrap: anywhere; }
-.pg-gap { height: 1em; }
+.pg-p { margin: 0 0 0.7em; font-size: 24px; overflow-wrap: anywhere; }
+.pg-gap { height: 0.4em; }
 
 /* buttons / selects */
 .icon-btn, .ghost { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 550; padding: 7px 11px; transition: background .15s, border-color .15s; }
