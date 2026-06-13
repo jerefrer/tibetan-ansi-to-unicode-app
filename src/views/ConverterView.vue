@@ -1,525 +1,468 @@
 <script setup>
-import TibetanAnsiToUnicode from "tibetan-ansi-to-unicode";
-import { computed, onMounted, ref, watch } from "vue";
+import TibetanAnsiToUnicode, {
+  convertRuns,
+  docxToRuns,
+  rtfToRuns,
+  convertDocxDocument,
+  convertRtfDocument,
+} from "tibetan-ansi-to-unicode";
+import { htmlToRuns } from "../lib/htmlRuns.js";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
-const direction = ref(localStorage.getItem("direction") || "toUnicode");
-const isDarkMode = ref(localStorage.getItem("darkMode") !== "false");
-const ansiCopied = ref(false);
-const unicodeCopied = ref(false);
-const ansiText = ref(
-  localStorage.getItem("ansiText") ||
-    `oe×ñÎ
+const FONTS = [
+  { label: "Jomolhari", value: "Jomolhari" },
+  { label: "Tibetan Machine Uni", value: "Tibetan Machine Uni" },
+  { label: "DDC Uchen", value: "DDC Uchen" },
+];
+const selectedFont = ref(localStorage.getItem("uniFont") || "Jomolhari");
+watch(selectedFont, (v) => localStorage.setItem("uniFont", v));
+
+function prefersDark() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+const saved = localStorage.getItem("darkMode");
+const isDark = ref(saved === null ? prefersDark() : saved === "true");
+let mql = null;
+function onSystemThemeChange(e) {
+  if (localStorage.getItem("darkMode") === null) isDark.value = e.matches;
+}
+onMounted(() => {
+  if (window.matchMedia) {
+    mql = window.matchMedia("(prefers-color-scheme: dark)");
+    mql.addEventListener?.("change", onSystemThemeChange);
+  }
+});
+onBeforeUnmount(() => mql?.removeEventListener?.("change", onSystemThemeChange));
+
+const isDragging = ref(false);
+const copied = ref(false);
+const note = ref("");
+
+const result = ref(""); // Unicode output
+const sourceLabel = ref(""); // set when imported from a file / formatted paste
+const detectedFonts = ref([]);
+const typing = ref(false); // plain-ANSI textarea revealed?
+const ansi = ref(""); // plain ANSI typed by the user
+const fileInput = ref(null);
+const srcFile = ref(null); // { name, kind, buffer|text } — kept so we can rebuild the file
+const building = ref(false);
+
+// view = empty | typing | result
+const view = computed(() =>
+  typing.value ? "typing" : result.value || sourceLabel.value ? "result" : "empty"
+);
+
+const EXAMPLE = `oe×ñÎ
 >ë-{,-8ß:-bÜ-¹¥/-e$-020<Î
 ýV-#è-<9-Zë$-ýë-:Î
-8-02,-0&ë#-#Ü-+$ë<-iá/-/Cè<Î
-ýV-7e³$-#,<-5è<-<ß-i#<Î
-7"ë9-¸¥-0"7-7ië-0$-ýë<-/Uë9Î
-aè+-\`Ü-Bè<-<ß-/+#-/…å/-\`Ü<Î
-eÜ,-bÜ<-/x/-dÜ9-#;è#<-<ß-#<ë:Î
-μ¥-9ß-ýV-<ÜKÜ-oe×ñÎ`
-);
-const unicodeText = ref(localStorage.getItem("unicodeText") || "");
+μ¥-9ß-ýV-<ÜKÜ-oe×ñÎ`;
 
-let isConverting = false;
-
-const inputText = computed(() => {
-  return direction.value === "toUnicode" ? ansiText.value : unicodeText.value;
-});
-
-const convertedOutput = computed(() => {
-  const input = inputText.value;
-  if (!input) return "";
-  return input
+function convertPlain(text) {
+  return text
     .split("\n")
-    .map((line) => {
-      const converter = new TibetanAnsiToUnicode(line);
-      return direction.value === "toAnsi"
-        ? converter.convertToAnsi()
-        : converter.convert();
-    })
+    .map((l) => new TibetanAnsiToUnicode(l).convert())
     .join("\n");
-});
-
-watch(ansiText, (value) => {
-  localStorage.setItem("ansiText", value);
-  if (direction.value === "toUnicode" && !isConverting) {
-    isConverting = true;
-    unicodeText.value = convertedOutput.value;
-    isConverting = false;
-  }
-});
-
-watch(unicodeText, (value) => {
-  localStorage.setItem("unicodeText", value);
-  if (direction.value === "toAnsi" && !isConverting) {
-    isConverting = true;
-    ansiText.value = convertedOutput.value;
-    isConverting = false;
-  }
-});
-
-watch(direction, (value) => {
-  localStorage.setItem("direction", value);
-});
-
-function toggleDirection() {
-  direction.value = direction.value === "toUnicode" ? "toAnsi" : "toUnicode";
 }
 
-async function copyAnsi() {
+async function importRuns(runs, label) {
+  const r = convertRuns(runs, { details: true });
+  result.value = r.text;
+  detectedFonts.value = [...new Set(runs.map((x) => x.font).filter(Boolean))];
+  sourceLabel.value = label;
+  typing.value = false;
+  ansi.value = "";
+}
+
+function flash(msg) {
+  note.value = msg;
+  setTimeout(() => (note.value = ""), 3500);
+}
+
+async function handleFile(file) {
+  const name = (file.name || "").toLowerCase();
   try {
-    await navigator.clipboard.writeText(ansiText.value);
-    ansiCopied.value = true;
-    setTimeout(() => {
-      ansiCopied.value = false;
-    }, 2000);
-  } catch (err) {
-    console.error("Failed to copy:", err);
+    if (name.endsWith(".docx")) {
+      const buf = await file.arrayBuffer();
+      srcFile.value = { name: file.name, kind: "docx", buffer: buf };
+      await importRuns(await docxToRuns(buf), file.name);
+    } else if (name.endsWith(".rtf")) {
+      const text = await file.text();
+      srcFile.value = { name: file.name, kind: "rtf", text };
+      await importRuns(rtfToRuns(text), file.name);
+    } else {
+      flash("Please drop a .docx or .rtf file");
+    }
+  } catch (e) {
+    console.error(e);
+    flash("Could not read that file");
   }
 }
 
-async function copyUnicode() {
+function saveBlob(data, type, filename) {
+  const blob = new Blob([data], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function downloadDocument() {
+  if (!srcFile.value) return;
+  building.value = true;
   try {
-    await navigator.clipboard.writeText(unicodeText.value);
-    unicodeCopied.value = true;
-    setTimeout(() => {
-      unicodeCopied.value = false;
-    }, 2000);
-  } catch (err) {
-    console.error("Failed to copy:", err);
+    const base = srcFile.value.name.replace(/\.(docx|rtf)$/i, "") + " (Unicode)";
+    if (srcFile.value.kind === "docx") {
+      const bytes = await convertDocxDocument(srcFile.value.buffer, {
+        unicodeFont: selectedFont.value,
+      });
+      saveBlob(
+        bytes,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        base + ".docx"
+      );
+    } else if (srcFile.value.kind === "rtf") {
+      const rtf = convertRtfDocument(srcFile.value.text, {
+        unicodeFont: selectedFont.value,
+      });
+      saveBlob(rtf, "application/rtf", base + ".rtf");
+    }
+  } catch (e) {
+    console.error(e);
+    flash("Could not build the file");
+  } finally {
+    building.value = false;
   }
 }
 
-function toggleDarkMode() {
-  isDarkMode.value = !isDarkMode.value;
-  localStorage.setItem("darkMode", isDarkMode.value);
+function onDrop(e) {
+  e.preventDefault();
+  isDragging.value = false;
+  const f = e.dataTransfer?.files?.[0];
+  if (f) handleFile(f);
+}
+function onDragOver(e) {
+  e.preventDefault();
+  isDragging.value = true;
+}
+function onDragLeave(e) {
+  if (e.target === e.currentTarget) isDragging.value = false;
+}
+function onPaste(e) {
+  const html = e.clipboardData?.getData("text/html");
+  if (html && /font-family|<font/i.test(html)) {
+    const runs = htmlToRuns(html);
+    if (runs.some((r) => r.font)) {
+      e.preventDefault();
+      srcFile.value = null;
+      importRuns(runs, "Pasted formatted text");
+      return;
+    }
+  }
+  if (view.value === "empty") {
+    typing.value = true;
+    nextTick(() => onType());
+  }
 }
 
-onMounted(() => {
-  if (direction.value === "toUnicode" && ansiText.value) {
-    isConverting = true;
-    unicodeText.value = convertedOutput.value;
-    isConverting = false;
+function pickFile() {
+  fileInput.value?.click();
+}
+function onFileChange(e) {
+  const f = e.target.files?.[0];
+  if (f) handleFile(f);
+  e.target.value = "";
+}
+
+function onType() {
+  result.value = convertPlain(ansi.value);
+}
+function startTyping() {
+  typing.value = true;
+}
+function loadExample() {
+  typing.value = true;
+  ansi.value = EXAMPLE;
+  onType();
+}
+function reset() {
+  result.value = "";
+  sourceLabel.value = "";
+  detectedFonts.value = [];
+  ansi.value = "";
+  typing.value = false;
+  srcFile.value = null;
+}
+
+async function copy() {
+  try {
+    await navigator.clipboard.writeText(result.value);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 1800);
+  } catch (e) {
+    console.error(e);
   }
-});
+}
+function download() {
+  const blob = new Blob([result.value], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tibetan-unicode.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function toggleTheme() {
+  isDark.value = !isDark.value;
+  localStorage.setItem("darkMode", isDark.value);
+}
 </script>
 
 <template>
-  <div class="container" :class="{ 'light-mode': !isDarkMode }">
-    <div class="converter-container">
-      <button
-        class="theme-toggle"
-        @click="toggleDarkMode"
-        :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
-      >
-        <svg
-          v-if="isDarkMode"
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-        <svg
-          v-else
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      </button>
-
-      <div class="panels">
-        <div class="panel left-panel">
-          <div class="panel-header">
-            <span>ANSI</span>
-            <button
-              class="copy-btn"
-              :class="{ copied: ansiCopied }"
-              @click="copyAnsi"
-              title="Copy ANSI"
-            >
-              <svg
-                v-if="!ansiCopied"
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                />
-              </svg>
-              <svg
-                v-else
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
-          </div>
-          <textarea
-            v-model="ansiText"
-            :readonly="direction === 'toAnsi'"
-            :class="{ readonly: direction === 'toAnsi' }"
-          ></textarea>
-        </div>
-
-        <button
-          class="swap-button"
-          @click="toggleDirection"
-          title="Swap direction"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            :class="{ flipped: direction === 'toAnsi' }"
-          >
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-        </button>
-
-        <div class="panel right-panel">
-          <div class="panel-header">
-            <span>Unicode</span>
-            <button
-              class="copy-btn"
-              :class="{ copied: unicodeCopied }"
-              @click="copyUnicode"
-              title="Copy Unicode"
-            >
-              <svg
-                v-if="!unicodeCopied"
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                />
-              </svg>
-              <svg
-                v-else
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
-          </div>
-          <textarea
-            v-model="unicodeText"
-            :readonly="direction === 'toUnicode'"
-            :class="['tibetan', { readonly: direction === 'toUnicode' }]"
-          ></textarea>
-        </div>
+  <div
+    class="app"
+    :data-theme="isDark ? 'dark' : 'light'"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
+    @paste="onPaste"
+  >
+    <!-- overlay only when there is no visible drop zone -->
+    <div v-if="isDragging && view !== 'empty'" class="veil">
+      <div class="veil__box">
+        <svg viewBox="0 0 24 24" class="ic-xl"><path d="M12 16V4m0 0 4 4m-4-4-4 4" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+        <p>Drop to convert</p>
       </div>
     </div>
+
+    <header class="bar">
+      <div class="brand">
+        <span class="dot"></span>Tibetan&nbsp;<span class="muted">legacy → Unicode</span>
+      </div>
+      <button class="icon-btn" @click="toggleTheme" :title="isDark ? 'Light mode' : 'Dark mode'">
+        <svg v-if="isDark" viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19" /></svg>
+        <svg v-else viewBox="0 0 24 24" class="ic"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
+      </button>
+    </header>
+
+    <main class="wrap">
+      <!-- EMPTY: the drop zone is the whole hero -->
+      <template v-if="view === 'empty'">
+        <h1 class="title">Convert old Tibetan fonts to Unicode</h1>
+        <p class="sub">
+          Drop a Word or RTF file — the original font of every character is used to
+          decode it, so mixed scripts and Sanskrit stacks come out right.
+        </p>
+        <div class="drop" :class="{ active: isDragging }" @click="pickFile">
+          <input ref="fileInput" type="file" accept=".docx,.rtf" hidden @change="onFileChange" />
+          <svg viewBox="0 0 24 24" class="ic-xl"><path d="M12 16V4m0 0 4 4m-4-4-4 4" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+          <p class="drop__title">Drag &amp; drop a <b>.docx</b> or <b>.rtf</b></p>
+          <button class="pill" @click.stop="pickFile">Choose a file</button>
+          <p class="drop__hint">
+            or paste formatted text (⌘/Ctrl + V) ·
+            <a href="#" @click.prevent.stop="startTyping">type ANSI</a> ·
+            <a href="#" @click.prevent.stop="loadExample">example</a>
+          </p>
+        </div>
+      </template>
+
+      <!-- TYPING: plain ANSI in, live Unicode out -->
+      <template v-else-if="view === 'typing'">
+        <div class="toolbar">
+          <button class="ghost" @click="reset"><svg viewBox="0 0 24 24" class="ic-s"><path d="M15 18l-6-6 6-6" /></svg> Drop a file instead</button>
+          <div class="spacer"></div>
+          <button class="ghost" v-if="result" @click="copy">
+            <svg v-if="!copied" viewBox="0 0 24 24" class="ic-s"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            <svg v-else viewBox="0 0 24 24" class="ic-s"><path d="m20 6-11 11-5-5" /></svg>
+            {{ copied ? "Copied" : "Copy" }}
+          </button>
+        </div>
+        <textarea
+          v-model="ansi"
+          @input="onType"
+          spellcheck="false"
+          placeholder="Paste or type ANSI Tibetan text…"
+        ></textarea>
+        <div v-if="result" class="tibetan output">{{ result }}</div>
+      </template>
+
+      <!-- RESULT: just the converted text -->
+      <template v-else>
+        <div class="toolbar">
+          <div class="src">
+            <svg viewBox="0 0 24 24" class="ic-s"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /></svg>
+            <span class="src__name">{{ sourceLabel }}</span>
+          </div>
+          <div class="spacer"></div>
+          <label v-if="srcFile" class="fontsel" title="Unicode font for the converted document">
+            <select v-model="selectedFont">
+              <option v-for="f in FONTS" :key="f.value" :value="f.value">{{ f.label }}</option>
+            </select>
+          </label>
+          <button
+            v-if="srcFile"
+            class="pill sm"
+            :disabled="building"
+            @click="downloadDocument"
+            title="Same document, fonts converted to Unicode — all formatting kept"
+          >
+            <svg viewBox="0 0 24 24" class="ic-s"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /></svg>
+            {{ building ? "Preparing…" : srcFile.kind === "rtf" ? "Download RTF" : "Download Word" }}
+          </button>
+          <button class="ghost" @click="copy">
+            <svg v-if="!copied" viewBox="0 0 24 24" class="ic-s"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            <svg v-else viewBox="0 0 24 24" class="ic-s"><path d="m20 6-11 11-5-5" /></svg>
+            {{ copied ? "Copied" : "Copy" }}
+          </button>
+          <button class="ghost" @click="download" title="Plain Unicode text (.txt)"><svg viewBox="0 0 24 24" class="ic-s"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg> .txt</button>
+          <button class="ghost" @click="reset">New</button>
+        </div>
+        <div v-if="detectedFonts.length" class="chips">
+          <span class="chip" v-for="f in detectedFonts" :key="f">{{ f }}</span>
+        </div>
+        <div class="tibetan output">{{ result }}</div>
+      </template>
+
+      <transition name="fade"><p v-if="note" class="toast">{{ note }}</p></transition>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.container {
-  padding: 40px;
-  padding-top: 70px;
+.app {
+  --bg: #f7f7f8;
+  --card: #ffffff;
+  --border: rgba(15, 18, 25, 0.09);
+  --text: #15171c;
+  --muted: #8a8f99;
+  --accent: #d98a2b;
+  --accent-soft: rgba(217, 138, 43, 0.12);
+  --shadow: 0 1px 2px rgba(15, 18, 25, 0.04), 0 10px 34px rgba(15, 18, 25, 0.06);
   min-height: 100vh;
-  box-sizing: border-box;
-  background: #0a0a0a;
-  transition: background 0.3s ease;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background 0.3s, color 0.3s;
+}
+.app[data-theme="dark"] {
+  --bg: #0b0c0e;
+  --card: #151619;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #ecedf0;
+  --muted: #7f858f;
+  --accent: #e8a64a;
+  --accent-soft: rgba(232, 166, 74, 0.15);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 44px rgba(0, 0, 0, 0.4);
 }
 
-.light-mode {
-  background: #f8f9fa;
+.bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px; max-width: 880px; margin: 0 auto;
 }
+.brand { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; display: flex; align-items: center; }
+.brand .muted { color: var(--muted); font-weight: 500; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-right: 10px; box-shadow: 0 0 0 4px var(--accent-soft); }
 
-.converter-container {
-  position: relative;
-  max-width: 1600px;
-  margin: 0 auto;
-}
+.wrap { max-width: 880px; margin: 0 auto; padding: 16px 28px 80px; }
+.title { font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -0.03em; font-weight: 700; margin: 32px 0 12px; }
+.sub { color: var(--muted); font-size: 16px; max-width: 60ch; margin: 0 0 28px; line-height: 1.55; }
 
-.theme-toggle {
-  position: absolute;
-  top: -50px;
-  right: 0;
-  padding: 10px;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+/* drop zone (empty state) */
+.drop {
+  border: 1.5px dashed var(--border);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  padding: 56px 28px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
   cursor: pointer;
-  z-index: 999;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
 }
+.drop:hover { border-color: var(--accent); }
+.drop.active { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.005); }
+.drop__title { font-size: 18px; font-weight: 600; margin: 8px 0 2px; }
+.drop__title b { color: var(--accent); }
+.drop__hint { color: var(--muted); font-size: 13.5px; margin-top: 10px; }
+.drop__hint a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 
-.theme-toggle:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.12);
-  transform: scale(1.05);
-}
+.pill { border: none; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; padding: 10px 18px; border-radius: 999px; cursor: pointer; transition: filter 0.15s, transform 0.1s; }
+.pill:hover { filter: brightness(1.05); }
+.pill:active { transform: scale(0.97); }
+.pill.sm { padding: 7px 14px; font-size: 13px; }
 
-.light-mode .theme-toggle {
-  color: rgba(0, 0, 0, 0.5);
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.08);
-}
+/* toolbar (typing + result) */
+.toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0 14px; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.src { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.src__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.light-mode .theme-toggle:hover {
-  color: rgba(0, 0, 0, 0.8);
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.panels {
-  display: flex;
-  align-items: stretch;
-  gap: 24px;
-  min-height: calc(100vh - 140px);
-}
-
-.panel {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-header {
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  border-radius: 12px 12px 0 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.light-mode .panel-header {
-  background: rgba(0, 0, 0, 0.02);
-  color: rgba(0, 0, 0, 0.45);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-
-.copy-btn {
-  padding: 6px 10px;
-  color: rgba(255, 255, 255, 0.4);
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.copy-btn:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.light-mode .copy-btn {
-  color: rgba(0, 0, 0, 0.35);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-.light-mode .copy-btn:hover {
-  color: rgba(0, 0, 0, 0.7);
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.15);
-}
-
-.copy-btn.copied {
-  color: #21ba45;
-  border-color: #21ba45;
-}
-
-.copy-btn.copied:hover {
-  color: #21ba45;
-  border-color: #21ba45;
-}
-
-.light-mode .copy-btn.copied {
-  color: #21ba45;
-  border-color: #21ba45;
-}
-
-.light-mode .copy-btn.copied:hover {
-  color: #21ba45;
-  border-color: #21ba45;
-}
-
-.swap-button {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 52px;
-  height: 52px;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.swap-button:hover {
-  color: #fff;
-  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-  transform: translate(-50%, -50%) scale(1.08);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
-}
-
-.swap-button:active {
-  transform: translate(-50%, -50%) scale(0.95);
-}
-
-.swap-button svg {
-  transition: transform 0.3s ease;
-}
-
-.swap-button svg.flipped {
-  transform: scaleX(-1);
-}
-
-.light-mode .swap-button {
-  color: rgba(0, 0, 0, 0.6);
-  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.light-mode .swap-button:hover {
-  color: #000;
-  background: linear-gradient(135deg, #ffffff 0%, #e8e8e8 100%);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.15);
-}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 18px; }
+.chip { font-size: 12px; color: var(--muted); background: var(--accent-soft); border: 1px solid var(--border); padding: 3px 9px; border-radius: 999px; }
 
 textarea {
-  flex: 1;
-  width: 100%;
-  min-height: 400px;
-  margin: 0;
-  padding: 24px;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: none;
-  border-radius: 0 0 12px 12px;
-  resize: none;
+  width: 100%; min-height: 200px; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--card); color: var(--text);
+  padding: 18px 20px; font-size: 17px; line-height: 1.7; font-family: inherit;
+  outline: none; resize: vertical; box-shadow: var(--shadow);
+}
+textarea:focus { border-color: var(--accent); }
+
+/* output text */
+.output {
+  margin-top: 18px;
+  font-size: 30px; line-height: 1.85; overflow-wrap: anywhere;
+  color: var(--text);
+}
+.tibetan {
+  font-family: "TibetanChogyalUnicode-170221", "TibetanChogyalUnicode",
+    "TibetanMachineUnicode", "Jomolhari", "Noto Serif Tibetan", serif;
+}
+
+/* buttons */
+.icon-btn, .ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--border); background: transparent; color: var(--text);
+  border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 550;
+  padding: 7px 11px; transition: background 0.15s, border-color 0.15s;
+}
+.ghost:hover, .icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.icon-btn { padding: 9px; }
+
+.fontsel select {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 7px 10px;
+  cursor: pointer;
   font-family: inherit;
-  font-size: 21px;
-  line-height: 39px;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
 }
+.fontsel select:hover { border-color: var(--accent); }
 
-textarea:focus {
-  outline: none;
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.15);
-}
+.ic { width: 18px; height: 18px; }
+.ic-s { width: 15px; height: 15px; }
+.ic-xl { width: 40px; height: 40px; color: var(--accent); }
+svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-textarea.readonly {
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.9);
+/* drag overlay (only when no zone visible) */
+.veil {
+  position: fixed; inset: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
 }
+.veil__box { border: 2px dashed var(--accent); border-radius: 24px; padding: 56px 84px; text-align: center; background: var(--card); box-shadow: var(--shadow); }
+.veil__box p { font-size: 18px; font-weight: 600; margin: 12px 0 0; }
 
-.light-mode textarea {
-  color: #1a1a1a;
-  background: #fff;
-  border-color: rgba(0, 0, 0, 0.08);
-}
-
-.light-mode textarea:focus {
-  background: #fff;
-  border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
-}
-
-.light-mode textarea.readonly {
-  background: #fafafa;
-  color: #1a1a1a;
-}
-
-textarea.tibetan {
-  font-family: TibetanChogyalUnicode-170221, TibetanChogyalUnicode-ID,
-    TibetanChogyalUnicode, TibetanMachineUnicode, sans-serif;
-  font-size: 36px;
-  line-height: 39px;
-}
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 11px 18px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 60; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
