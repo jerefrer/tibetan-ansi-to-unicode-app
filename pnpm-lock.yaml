@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       tibetan-ansi-to-unicode:
-        specifier: ^1.5.0
-        version: 1.5.0
+        specifier: ^1.6.0
+        version: 1.6.0
       vue:
         specifier: ^3.4.0
         version: 3.5.38
@@ -445,8 +445,8 @@ packages:
   string_decoder@1.1.1:
     resolution: {integrity: sha512-n/ShnvDi6FHbbVfviro+WojiFzv+s8MPMHBczVePfUpDJLwoLT0ht1l4YwBCbi8pJAveEEdnkHyPyTP/mzRfwg==}
 
-  tibetan-ansi-to-unicode@1.5.0:
-    resolution: {integrity: sha512-7rHNVktCUGNh+615+AKghSvaH2IQxpxgEXndrRaXvNA5/D5ntcTMTd3VZBw/ddhaqgg9iT2tJTkn9D6fQkhOBw==}
+  tibetan-ansi-to-unicode@1.6.0:
+    resolution: {integrity: sha512-LDMvMqDjxhitnGxw/ZOkuxsGjicQn/LJw952h1fWTjuwPAh8o/xEt6IbowIWdtMGkzw7HoLwPL7NO6P2vDEcLA==}
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
@@ -842,7 +842,7 @@ snapshots:
     dependencies:
       safe-buffer: 5.1.2
 
-  tibetan-ansi-to-unicode@1.5.0:
+  tibetan-ansi-to-unicode@1.6.0:
     dependencies:
       jszip: 3.10.1
 
