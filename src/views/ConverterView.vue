@@ -19,6 +19,10 @@ const FONTS = [
 ];
 const selectedFont = ref(localStorage.getItem("uniFont") || "Jomolhari");
 watch(selectedFont, (v) => localStorage.setItem("uniFont", v));
+
+function effScale() {
+  return defaultSizeScale(selectedFont.value);
+}
 const previewFont = computed(
   () => `"${selectedFont.value}", "Tibetan Machine Uni", "Jomolhari", "Noto Serif Tibetan", serif`
 );
@@ -171,11 +175,15 @@ async function downloadDocument() {
   building.value = true;
   try {
     const base = srcFile.value.name.replace(/\.(docx|rtf)$/i, "") + " (Unicode)";
+    // The preview sizes runs in px; document sizes are in points. Convert so the
+    // exported file renders at the same visual size as the preview (1pt = 96/72 px).
+    const PT_PER_PX = 72 / 96;
+    const opts = { unicodeFont: selectedFont.value, sizeScale: effScale() * PT_PER_PX };
     if (srcFile.value.kind === "docx") {
-      const bytes = await convertDocxDocument(srcFile.value.buffer, { unicodeFont: selectedFont.value });
+      const bytes = await convertDocxDocument(srcFile.value.buffer, opts);
       saveBlob(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", base + ".docx");
     } else {
-      const rtf = convertRtfDocument(srcFile.value.text, { unicodeFont: selectedFont.value });
+      const rtf = convertRtfDocument(srcFile.value.text, opts);
       saveBlob(rtf, "application/rtf", base + ".rtf");
     }
   } catch (e) {
@@ -202,7 +210,7 @@ function toggleTheme() {
 
 function runStyle(run) {
   const s = {};
-  const scale = defaultSizeScale(selectedFont.value);
+  const scale = effScale();
   if (run.size) s.fontSize = Math.round(run.size * scale) + "px";
   if (run.bold) s.fontWeight = "700";
   if (run.italic) s.fontStyle = "italic";
@@ -374,7 +382,7 @@ textarea:focus { border-color: var(--accent); }
   background: var(--paper); color: var(--paper-ink);
   border-radius: 8px; box-shadow: var(--paper-shadow);
   padding: 56px 60px; margin-top: 18px; min-height: 400px;
-  line-height: 1.85;
+  line-height: 1;
 }
 .pg-p { margin: 0 0 0.7em; font-size: 20px; overflow-wrap: anywhere; }
 .pg-gap { height: 1em; }
